@@ -1,0 +1,90 @@
+GUIDE TITLE:
+HUD lag fix: 40–60 → 120 FPS (and 60 on Steam Deck)
+
+SHORT DESCRIPTION ("Description" field):
+Unofficial patch that removes the interface lag when you wear the helmet. Two files, installs in a minute, removes just as easily.
+
+=== SECTION 1: Overview ===
+
+[h1]What is this[/h1]
+If the game starts lagging the moment you put the helmet on, it's not your GPU. The interface is to blame: HUD elements [b]re-read the save file from disk every single frame[/b]. The more elements on screen, the bigger the drop. It's especially noticeable on Steam Deck.
+
+This patch makes the HUD read the save a couple of times per second instead of every frame, and recompute heavy elements less often, with no visible difference.
+
+[b]Result:[/b] 40–60 unstable FPS → [b]a stable 120 FPS[/b] on PC.
+
+[list]
+[*]The HUD works fully: ammo, health, map, portrait all update as before
+[*]Your saves are not touched
+[*]Uninstall by deleting two files
+[/list]
+
+[quote]This is an unofficial patch built for [b]game version 1.0[/b]. If the game gets updated, remove the patch until a new version is released.[/quote]
+
+=== SECTION 2: Download and install (Windows) ===
+
+[h1]Download[/h1]
+[url=https://github.com/Juminathel/BeyondCitadelFix/releases/latest]Release page on GitHub[/url]: at the bottom, in the [b]Assets[/b] section, download both files:
+[list]
+[*][b]zz_hudopt_hud_P.pak[/b]: gameplay HUD
+[*][b]zz_hudopt_menus_P.pak[/b]: menus, shops, weapon wheel
+[/list]
+
+[h1]Installation[/h1]
+[olist]
+[*]In Steam: right-click Beyond Citadel → [b]Manage[/b] → [b]Browse local files[/b]
+[*]Open the [b]beyond_citadel\Content\Paks[/b] folder
+[*]Copy both downloaded files there
+[*]Launch the game
+[/olist]
+
+Default path:
+[code]C:\Program Files (x86)\Steam\steamapps\common\Beyond Citadel\beyond_citadel\Content\Paks\[/code]
+
+You should end up with three files in the folder:
+[code]beyond_citadel-WindowsNoEditor.pak   <- the game's own file, DO NOT touch
+zz_hudopt_hud_P.pak
+zz_hudopt_menus_P.pak[/code]
+
+[b]Do not delete or replace beyond_citadel-WindowsNoEditor.pak[/b]. It is the whole game; without it the game won't start.
+
+=== SECTION 3: Steam Deck ===
+
+[h1]Installing on Steam Deck[/h1]
+[olist]
+[*]Switch to [b]Desktop Mode[/b] (Steam button → Power → Switch to Desktop)
+[*]Download both .pak files in the browser (link in the section above)
+[*]Open the Dolphin file manager and go to:
+[code]/home/deck/.local/share/Steam/steamapps/common/Beyond Citadel/beyond_citadel/Content/Paks/[/code]
+The .local folder is hidden: press [b]Ctrl+H[/b] to show it. If the game is on an SD card: Steam → right-click the game → Manage → Browse local files.
+[*]Copy both files there
+[*]Return to Gaming Mode and play
+[/olist]
+
+=== SECTION 4: Uninstall and troubleshooting ===
+
+[h1]How to uninstall[/h1]
+Delete only two files from the [b]Paks[/b] folder: [b]zz_hudopt_hud_P.pak[/b] and [b]zz_hudopt_menus_P.pak[/b]. The game is back to fully original.
+
+[h1]If something goes wrong[/h1]
+[list]
+[*][b]The game crashes[/b]: remove zz_hudopt_menus_P.pak first. Didn't help? Remove zz_hudopt_hud_P.pak too.
+[*][b]The game doesn't start at all[/b]: check that beyond_citadel-WindowsNoEditor.pak is still there. If not: Steam → right-click the game → Properties → Installed Files → [b]Verify integrity of game files[/b].
+[*][b]The game got an update[/b]: remove the patch until a compatible version is released.
+[*][b]You found a HUD bug[/b]: tell us in the comments which element and what's wrong with it, or open an issue on GitHub.
+[/list]
+
+=== SECTION 5: How it works (for the curious) ===
+
+[h1]What was wrong[/h1]
+In Unreal Engine, interface elements can be "bound" to a function (a binding): the engine calls it [b]every frame[/b] to find out what to show. In Beyond Citadel many of these functions start by calling [b]LoadGameFromSlot[/b]: they load the save from disk just to check a setting.
+
+In the main HUD, 29 elements do this. That's thousands of save-file reads per second, and each one creates a new object that the garbage collector has to clean up later, hence the unstable frame times. Menus are even worse: the weapon shop has 268 such call sites.
+
+[h1]What the patch does[/h1]
+[list]
+[*][b]Save cache[/b]: the save is re-read at most twice per second (about 7 times in menus). Functions that write the save are unchanged.
+[*][b]Recompute heavy elements less often[/b]: complex gameplay HUD elements update 12–25 times per second instead of every frame. You won't see the difference.
+[/list]
+
+The compiled code of 252 widgets was modified: 4219 save loads were replaced with a cache, and 378 HUD elements are recomputed less often. Tool sources and details are on [url=https://github.com/Juminathel/BeyondCitadelFix]GitHub[/url], where you can also build the patch yourself from your own copy of the game.

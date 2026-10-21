@@ -1,89 +1,91 @@
 # BeyondCitadelFix
 
-Оптимизация HUD/интерфейса для **Beyond Citadel** (UE 4.25): убирает лаги при надетом шлеме.
-Результат на ПК: **40–60 нестабильных FPS → 120 FPS**. Основная цель — стабильные 60 FPS на Steam Deck.
+**English** | [Русский](README.ru.md)
 
-## Скачать
+HUD/UI performance fix for **Beyond Citadel** (UE 4.25): removes the lag that starts when you put the helmet on.
+Result on PC: **40–60 unstable FPS → 120 FPS**. Main goal: a stable 60 FPS on Steam Deck.
 
-**[Последний релиз](https://github.com/Juminathel/BeyondCitadelFix/releases/latest)** — два файла:
-`zz_hudopt_hud_P.pak` и `zz_hudopt_menus_P.pak`.
+## Download
 
-Собрано под **версию игры 1.0**. После обновления игры патч нужно удалить (или пересобрать, см. ниже).
+**[Latest release](https://github.com/Juminathel/BeyondCitadelFix/releases/latest)**: two files,
+`zz_hudopt_hud_P.pak` and `zz_hudopt_menus_P.pak`.
 
-## Установка
+Built for **game version 1.0**. If the game gets updated, remove the patch (or rebuild it, see below).
 
-Положите **оба** `.pak` в папку `beyond_citadel/Content/Paks/` игры:
+## Installation
 
-| система | путь |
+Put **both** `.pak` files into the game's `beyond_citadel/Content/Paks/` folder:
+
+| platform | path |
 |---|---|
 | Windows | `C:\Program Files (x86)\Steam\steamapps\common\Beyond Citadel\beyond_citadel\Content\Paks\` |
 | Steam Deck | `/home/deck/.local/share/Steam/steamapps/common/Beyond Citadel/beyond_citadel/Content/Paks/` |
 
-Если Steam-библиотека на другом диске: Steam → ПКМ по игре → Управление → Просмотреть локальные файлы.
+If your Steam library is on another drive: Steam → right-click the game → Manage → Browse local files.
 
-> ⚠️ Оригинальный `beyond_citadel-WindowsNoEditor.pak` в той же папке **не удалять и не заменять** —
-> без него игра не запустится.
+> ⚠️ **Do not delete or replace** the original `beyond_citadel-WindowsNoEditor.pak` in the same folder.
+> It is the whole game; without it the game will not start.
 
-**Удаление:** удалить только `zz_hudopt_hud_P.pak` и `zz_hudopt_menus_P.pak`.
+**Uninstall:** delete only `zz_hudopt_hud_P.pak` and `zz_hudopt_menus_P.pak`.
 
-**Если игра вылетает:** сначала уберите `zz_hudopt_menus_P.pak`; если не помогло — и `zz_hudopt_hud_P.pak`.
-Если что-то сломалось — откройте issue.
+**If the game crashes:** remove `zz_hudopt_menus_P.pak` first; if that doesn't help, remove `zz_hudopt_hud_P.pak` too.
+If something breaks, please open an issue.
 
-## В чём была проблема
+## What was wrong
 
-Binding-функции UMG-виджетов (их движок вызывает каждый кадр) делают `LoadGameFromSlot` —
-читают и десериализуют файл сохранения с диска **каждый кадр, для каждого элемента**.
-В основном HUD (`wid_hud_minimap_dual`) так делали 29 элементов (42 места загрузки),
-в меню/магазинах — до 268. При надетом шлеме видимых элементов много → тысячи чтений сейва в секунду,
-просадки FPS и фризы от сборщика мусора. Особенно сильно это бьёт по Steam Deck (Proton, слабее CPU).
+UMG widget binding functions (the engine calls them every frame) call `LoadGameFromSlot`: they read and
+deserialize a save file from disk **every frame, for every element**.
+In the main HUD (`wid_hud_minimap_dual`) 29 elements did this (42 load sites); menus and shops had up to 268.
+With the helmet on, many elements are visible → thousands of save reads per second,
+FPS drops and garbage-collection stutter. Steam Deck is hit hardest (Proton, weaker CPU).
 
-## Что делает патч
+## What the patch does
 
-Патч правит скомпилированный Kismet-байткод в cooked-ассетах (исходников проекта нет):
+The patch edits the compiled Kismet bytecode inside the cooked assets (no project source is needed):
 
-1. **Кэш сейва** — `LoadGameFromSlot` в read-only функциях заменяется кэшем в самом виджете
-   (перечитывание не чаще 0.5 с для игрового HUD, 0.15 с для меню). Функции, которые пишут
-   в сейв или сохраняют его, не трогаются.
-2. **Троттлинг binding'ов** (только игровой HUD) — тяжёлые binding'и пересчитываются раз в
-   40–80 мс (разные периоды, без синхронных спайков), в остальных кадрах возвращается кэш.
-   Все элементы продолжают обновляться — ничего не «замораживается».
+1. **Save cache.** `LoadGameFromSlot` in read-only functions is replaced with a cache stored in the widget
+   itself (reloaded at most every 0.5 s for the gameplay HUD, 0.15 s for menus). Functions that write
+   to the save or save it are left untouched.
+2. **Binding throttle** (gameplay HUD only). Heavy bindings are recomputed every 40–80 ms
+   (different periods per binding, so there are no synchronized spikes); other frames return the cached value.
+   Every element keeps updating; nothing is frozen.
 
-Итог: 252 виджета, 4219 замен загрузки сейва, 378 затроттленных binding'ов.
+Total: 252 widgets, 4219 save loads replaced, 378 bindings throttled.
 
-## Сборка из исходников
+## Building from source
 
-Нужен только Python 3 (Windows, Linux, Steam Deck). Патч собирается из вашей копии игры:
+Only Python 3 is needed (Windows, Linux, Steam Deck). The patch is built from your own copy of the game:
 
 ```bash
-python build.py "<путь к Beyond Citadel>" install
+python build.py "<path to Beyond Citadel>" install
 ```
 
-Без пути скрипт ищет игру в стандартных папках Steam. Без `install` — только собирает
-файлы в `out/`. На Linux можно и `./build.sh "<путь>" install`.
+Without a path, the script looks for the game in the default Steam folders. Without `install` it only builds
+the files into `out/`. On Linux you can also run `./build.sh "<path>" install`.
 
-## Инструменты (`tools/`)
+## Tools (`tools/`)
 
-| файл | назначение |
+| file | purpose |
 |---|---|
-| `pakget.py` | распаковка файлов из pak v9 |
-| `mkpak.py` | сборка pak v9 (mount `../../../`) |
-| `pkgedit.py` | редактирование .uasset/.uexp: имена, импорты, пересчёт смещений |
-| `namehash.py` | хеши FName для name map |
-| `ustruct.py` | разбор UStruct/UFunction export'ов, FField-свойств |
-| `kismet.py` | дизассемблер/ассемблер Kismet-байткода UE4.25 (in-memory offsets) |
-| `disasm.py` | вывод байткода функции: `python3 disasm.py <base> <func>` |
-| `reach.py` | какие `LoadGameFromSlot` достижимы из события (Tick, попадание…) |
-| `hudopt.py` | сам оптимизатор (кэш сейва + троттлинг) |
-| `verify.py` | структурная проверка пакета (переходы, ссылки на свойства, размеры) |
-| `build_hudopt.py` | прогон по всем виджетам с binding'ами |
-| `bindings.py`, `uasset.py`, `exports.py` | вспомогательный разбор |
+| `pakget.py` | extract files from a v9 pak |
+| `mkpak.py` | build a v9 pak (mount `../../../`) |
+| `pkgedit.py` | edit .uasset/.uexp: names, imports, offset fix-ups |
+| `namehash.py` | FName hashes for the name map |
+| `ustruct.py` | parse UStruct/UFunction exports and FField properties |
+| `kismet.py` | UE4.25 Kismet bytecode disassembler/assembler (in-memory offsets) |
+| `disasm.py` | print a function's bytecode: `python3 disasm.py <base> <func>` |
+| `reach.py` | which `LoadGameFromSlot` calls are reachable from an event (Tick, hit, …) |
+| `hudopt.py` | the optimizer itself (save cache + throttle) |
+| `verify.py` | structural package check (jumps, property references, sizes) |
+| `build_hudopt.py` | runs the optimizer over every widget with bindings |
+| `bindings.py`, `uasset.py`, `exports.py` | parsing helpers |
 
-Парсер проверен на всех 15 386 функциях игры (разбор → сборка байт-в-байт), пакетный
-редактор — на 863 BP-пакетах.
+The parser is tested on all 15,386 functions in the game (parse → rebuild is byte-identical); the package
+editor on 863 Blueprint packages.
 
-## Известное / дальше
+## Known limitations / next steps
 
-- Персонаж игрока (`BP_hero`) нативизирован в C++ (`.exe`) — этими инструментами не правится.
-- У врагов `LoadGameFromSlot` вызывается только при попаданиях/смертях (не в Tick и не в частых
-  таймерах) — по 5–36 мест на событие. Пока не патчилось: код смертей пишет в сейв
-  (статистика, квесты), кэширование там рискованно.
+- The player character (`BP_hero`) is nativized into C++ (inside the `.exe`); these tools can't edit it.
+- Enemies call `LoadGameFromSlot` only on hits and deaths, not in Tick or in frequent timers:
+  5–36 call sites per event. Not patched yet: death logic writes to the save (stats, quests),
+  so caching there is risky.
