@@ -30,4 +30,4 @@ for _ in range(n):
     if data is None: continue
     q=os.path.join(OUT,name); os.makedirs(os.path.dirname(q),exist_ok=True)
     open(q,'wb').write(data); ok+=1
-print('извлечено', ok, file=sys.stderr)
+print('extracted', ok, file=sys.stderr)

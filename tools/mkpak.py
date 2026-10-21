@@ -15,4 +15,4 @@ foot = b'\x00'*17 + struct.pack('<IIqq',0x5A6F12E1,9,len(body),len(index))
 foot += hashlib.sha1(bytes(index)).digest() + b'\x00' + b'Zlib'.ljust(32,b'\x00') + b'\x00'*128
 assert len(foot)==222
 open(out,'wb').write(bytes(body)+bytes(index)+foot)
-print(f'{out}: {len(recs)} файлов, {os.path.getsize(out)} байт')
+print(f'{out}: {len(recs)} files, {os.path.getsize(out)} bytes')
